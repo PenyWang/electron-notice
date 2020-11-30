@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hello World!</title>
+    <link rel="stylesheet" href="index.css" />
+    <script src="./utils.js"></script>
+  </head>
+  <body>
+    <h1>💖 Hello World!</h1>
+    <p>Welcome to your Electron application.</p>
+    <input id="todoInput" />
+    <script>
+      // todo
+      // 支持晚上八点十分 八点十五
+      const todoArr = [];
+      const initItem = {
+        time: 0, // 时间戳同时充当id
+        complete: false,
+        title: "",
+        content: "",
+        isNoticed: false,
+      };
+
+      const timeStrs = ["分钟后", "小时后"];
+      const stepTime = ["上午", "下午", "晚上"];
+      const stepTypes = ["点半", "点", "分"];
+
+      todoInput.addEventListener("keydown", (event) => {
+        if (event.keyCode == 13) {
+          const content = event.target.value.trim();
+          const newItem = JSON.parse(JSON.stringify(initItem));
+          const res = parseContent(content);
+          console.log(res);
+          todoArr.push({
+            ...newItem,
+            title: res.content,
+            content: res.content,
+            time: res.time,
+          });
+        }
+      });
+
+      //   时间到达，发出通知
+      setInterval(function () {
+        todoArr.forEach((item) => {
+          if (isClock(item)) {
+            notice(item);
+          }
+        });
+      }, 500);
+
+      function parseContent(content) {
+        const contentObj = {};
+        let contentArr = [];
+        timeStrs.forEach((item) => {
+          // 分钟后、小时后
+          if (content.indexOf(item) !== -1) {
+            contentArr = content.split(item);
+            if (contentArr.length > 1) {
+              contentObj.time = parseTime(item, contentArr[0]);
+              contentObj.content = contentArr[1];
+            }
+          }
+        });
+        if (contentObj.content && contentObj.time) return contentObj;
+        // 下午 上午 晚上
+        stepTime.forEach((item) => {
+          if (content.indexOf(item) !== -1) {
+            // 如果是上午、下午、晚上
+            stepTypes.forEach((type) => {
+              if (content.indexOf(type) !== -1) {
+                // 如果是点半 点 分
+                if (type === "点半") {
+                  const contentArr = content.split("点半"); // 上午八点半
+                  if (contentArr.length > 1) {
+                    let hour = contentArr[0].split(item)[1];
+                    if (!hour) return;
+                    contentObj.time = parseTime("点半", hour, item === "上午");
+                    contentObj.content = contentArr[1];
+                  }
+                }
+                if (contentObj.content && contentObj.time) return contentObj;
+                if (type === "点") {
+                  const contentArr = content.split("点"); // 上午八点
+                  if (contentArr.length > 1) {
+                    let hour = contentArr[0].split(item)[1];
+                    if (!hour) return;
+                    contentObj.time = parseTime("点", hour, item === "上午");
+                    contentObj.content = contentArr[1];
+                  }
+                }
+              }
+            });
+          }
+        });
+        return contentObj;
+      }
+
+      function parseTime(timeType, cnNum, isAm) {
+        if (timeType === "分钟后") {
+          return Date.now() + ChineseToNumber(cnNum) * 60 * 1000;
+        }
+        if (timeType === "小时后") {
+          return Date.now() + ChineseToNumber(cnNum) * 60 * 60 * 1000;
+        }
+        if (timeType === "点半" || timeType === "点") {
+          let hour = ChineseToNumber(cnNum);
+          if (!isAm) hour += 12;
+          const date = new Date();
+          date.setHours(hour);
+          if (timeType === "点半") date.setMinutes(30);
+          return date.getTime();
+        }
+      }
+
+      function isClock(todoItem) {
+        if (!todoItem.isNoticed) {
+          return todoItem.time < Date.now() ? true : false;
+        }
+      }
+
+      function notice(todoItem) {
+        try {
+          console.log("通知", todoItem);
+          Notification.requestPermission().then((permission) => {
+            if (permission == "granted") {
+              const myNotification = new Notification(todoItem.title, {
+                body: todoItem.content,
+                vibrate: 10,
+                timestamp: 20000,
+              });
+              todoItem.isNoticed = true;
+              updateTodoArr(todoItem);
+              myNotification.onclick = () => {
+                todoItem.complete = true;
+              };
+            }
+          });
+        } catch (error) {
+          console.log(error);
+          todoItem.isNoticed = false;
+          updateTodoArr(todoItem);
+        }
+      }
+
+      function updateTodoArr(todoItem) {
+        todoArr.forEach((item) => {
+          if (todoItem.time === item.time) {
+            Object.assign(item, todoItem);
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
