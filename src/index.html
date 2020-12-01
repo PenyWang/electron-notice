@@ -7,12 +7,12 @@
     <script src="./utils.js"></script>
   </head>
   <body>
-    <h1>💖 Hello World!</h1>
-    <p>Welcome to your Electron application.</p>
-    <input id="todoInput" />
+    <input id="todoInput" class="todo-input"/>
     <script>
       // todo
       // 支持晚上八点十分 八点十五
+      // 重构 1. 将script导出单独的文件
+      // 重头 2. 尝试改为策略模式
       const todoArr = [];
       const initItem = {
         time: 0, // 时间戳同时充当id
@@ -22,7 +22,7 @@
         isNoticed: false,
       };
 
-      const timeStrs = ["分钟后", "小时后"];
+      const timeStrs = ["小时后", "分钟后"];
       const stepTime = ["上午", "下午", "晚上"];
       const stepTypes = ["点半", "点", "分"];
 
@@ -38,6 +38,9 @@
             content: res.content,
             time: res.time,
           });
+          console.log('todoArr', JSON.stringify(todoArr));
+          todoInput.value = '';
+          todoInput.place = '请输入你想做的事';
         }
       });
 
@@ -53,17 +56,18 @@
       function parseContent(content) {
         const contentObj = {};
         let contentArr = [];
-        timeStrs.forEach((item) => {
+        for (let i = 0; i < timeStrs.length; i++) {
           // 分钟后、小时后
+          let item = timeStrs[i];
           if (content.indexOf(item) !== -1) {
             contentArr = content.split(item);
             if (contentArr.length > 1) {
               contentObj.time = parseTime(item, contentArr[0]);
               contentObj.content = contentArr[1];
+              return contentObj;
             }
           }
-        });
-        if (contentObj.content && contentObj.time) return contentObj;
+        }
         // 下午 上午 晚上
         stepTime.forEach((item) => {
           if (content.indexOf(item) !== -1) {
@@ -98,11 +102,16 @@
       }
 
       function parseTime(timeType, cnNum, isAm) {
+        const oneMinute = 60 * 1000;
+        const oneHour = 60 * oneMinute;
         if (timeType === "分钟后") {
-          return Date.now() + ChineseToNumber(cnNum) * 60 * 1000;
+          return Date.now() + ChineseToNumber(cnNum) * oneMinute;
         }
         if (timeType === "小时后") {
-          return Date.now() + ChineseToNumber(cnNum) * 60 * 60 * 1000;
+          if (cnNum === "半") {
+            return Date.now() + 0.5 * oneHour;
+          }
+          return Date.now() + ChineseToNumber(cnNum) * oneHour;
         }
         if (timeType === "点半" || timeType === "点") {
           let hour = ChineseToNumber(cnNum);
