@@ -7,10 +7,10 @@
     <script src="./utils.js"></script>
   </head>
   <body>
-    <input id="todoInput" class="todo-input"/>
+    <input id="todoInput" class="todo-input" />
     <script>
       // todo
-      // 支持晚上八点十分 八点十五
+      // 支持每半小时 晚上八点十分 八点十五
       // 重构 1. 将script导出单独的文件
       // 重头 2. 尝试改为策略模式
       const todoArr = [];
@@ -20,11 +20,30 @@
         title: "",
         content: "",
         isNoticed: false,
+        loop: false,
       };
 
       const timeStrs = ["小时后", "分钟后"];
       const stepTime = ["上午", "下午", "晚上"];
       const stepTypes = ["点半", "点", "分"];
+      const timeStrategy = {
+        '每半小时'(content) {
+          setInterval(() => {
+            todoArr.forEach((item) => {
+              if (item.loop) {
+                notice(item);
+              }
+            })
+          }, 1000 * 60 * 30);
+          const newItem = JSON.parse(JSON.stringify(initItem));
+          const newContent = content.split('每半小时')[1];
+          newItem.isNoticed = true;
+          newItem.loop = true;
+          newItem.title = newContent;
+          newItem.content = newContent;
+          return newItem;
+        },
+      };
 
       todoInput.addEventListener("keydown", (event) => {
         if (event.keyCode == 13) {
@@ -34,20 +53,18 @@
           console.log(res);
           todoArr.push({
             ...newItem,
-            title: res.content,
-            content: res.content,
-            time: res.time,
+            ...res,
           });
-          console.log('todoArr', JSON.stringify(todoArr));
-          todoInput.value = '';
-          todoInput.place = '请输入你想做的事';
+          console.log("todoArr", JSON.stringify(todoArr));
+          todoInput.value = "";
+          todoInput.place = "请输入你想做的事";
         }
       });
 
       //   时间到达，发出通知
       setInterval(function () {
         todoArr.forEach((item) => {
-          if (isClock(item)) {
+          if (isClock(item) && !item.isNoticed) {
             notice(item);
           }
         });
@@ -56,6 +73,15 @@
       function parseContent(content) {
         const contentObj = {};
         let contentArr = [];
+
+        const strategys = Object.keys(timeStrategy);
+        for(let i = 0; i < strategys.length; i++) {
+            let key = strategys[i];
+            if(content.indexOf(key) !== -1){
+                return timeStrategy[key](content);
+            }
+        }
+
         for (let i = 0; i < timeStrs.length; i++) {
           // 分钟后、小时后
           let item = timeStrs[i];
@@ -63,6 +89,7 @@
             contentArr = content.split(item);
             if (contentArr.length > 1) {
               contentObj.time = parseTime(item, contentArr[0]);
+              contentObj.title = contentArr[1];
               contentObj.content = contentArr[1];
               return contentObj;
             }
@@ -81,6 +108,7 @@
                     let hour = contentArr[0].split(item)[1];
                     if (!hour) return;
                     contentObj.time = parseTime("点半", hour, item === "上午");
+                    contentObj.title = contentArr[1];
                     contentObj.content = contentArr[1];
                   }
                 }
@@ -91,6 +119,7 @@
                     let hour = contentArr[0].split(item)[1];
                     if (!hour) return;
                     contentObj.time = parseTime("点", hour, item === "上午");
+                    contentObj.title = contentArr[1];
                     contentObj.content = contentArr[1];
                   }
                 }
